@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.project.reply.ReplyMapper">
+
+<insert id="insert" parameterType="kr.co.project.reply.ReplyVO">
+	insert into reply (
+		title, content, regdate, viewcount, member_no, filename_org, filename_real
+	)
+	values (
+		#{title}, #{content}, now(), 0, #{member_no}, #{filename_org}, #{filename_real}
+	)
+	<selectKey keyProperty="no" resultType="int" order="AFTER">
+		select last_insert_id() <!-- 이 함수의 리턴값을 setno 해줌 -->
+	</selectKey>
+</insert>
+
+<update id="gnoUpdate" parameterType="int">
+	update reply set gno=#{gno} where no=#{gno}
+</update>
+
+<update id="onoUpdate" parameterType="kr.co.project.reply.ReplyVO">
+	update reply set ono = ono+1 where gno=#{gno} and ono > #{ono}
+</update>
+
+<!-- 답변기능  -->
+<insert id="reply" parameterType="kr.co.project.reply.ReplyVO">
+	insert into reply (
+		title, content, regdate, viewcount, member_no, filename_org, filename_real, gno, ono, nested
+	)
+	values (
+		#{title}, #{content}, now(), 0, #{member_no}, #{filename_org}, #{filename_real}, #{gno}, #{ono}, #{nested}
+	)
+	<selectKey keyProperty="no" resultType="int" order="AFTER">
+		select last_insert_id() <!-- 이 함수의 리턴값을 setno 해줌 -->
+	</selectKey>
+</insert>
+
+<select id="count" parameterType="kr.co.project.reply.ReplyVO" resultType="int">
+	select count(*) from reply
+	<where> <!-- where태그없이 쓰려면 -> where 1=1 -->
+		<if test="stype != null and stype != ''"> <!-- 빈값도 제외시켜야 함 -->
+			<if test="stype != 'all'">
+				${stype} like '%${sword}%'
+			</if>
+			<if test="stype == 'all'">
+				title like '%${sword}%' or content like '%${sword}%'
+			</if>
+	    </if>
+	</where>
+</select>
+
+<select id="list" parameterType="kr.co.project.reply.ReplyVO" resultType="kr.co.project.reply.ReplyVO">
+	select *,
+		(select name from member where no=reply.member_no) as member_name,
+		(select count(*) from comment where board_no=reply.no and tablename='reply') as comment_count
+	from reply
+	<where> <!-- where태그없이 쓰려면 -> where 1=1 -->
+		<if test="stype != null and stype != ''"> <!-- 빈값도 제외시켜야 함 -->
+			<if test="stype != 'all'">
+				${stype} like '%${sword}%'
+			</if>
+			<if test="stype == 'all'">
+				title like '%${sword}%' or content like '%${sword}%'
+			</if>
+	    </if>
+	</where>
+	order by gno desc, ono asc
+	limit ${startIdx}, ${pageRow}
+</select>
+
+<select id="view" parameterType="int" resultType="kr.co.project.reply.ReplyVO">
+	select * from reply where no = #{no}
+</select>
+
+<update id="updateViewcount" parameterType="int">
+	update reply set viewcount = viewcount+1 where no = #{no}
+</update>
+
+<update id="update" parameterType="kr.co.project.reply.ReplyVO">
+	update reply set
+		title = #{title}, content = #{content}
+		<if test="filename_org != null">
+			,filename_org = #{filename_org}, filename_real = #{filename_real}
+		</if>
+	where no = #{no}
+</update>
+
+<delete id="delete" parameterType="int">
+	delete from reply where no = #{no}
+</delete>
+
+</mapper>
